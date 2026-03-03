@@ -1,3 +1,7 @@
+sudo useradd -m -G wheel -s /bin/zsh ilya
+sudo passwd ilya
+
+sudo pacman -S zsh-autosuggestions zsh-syntax-highlighting
 sudo pacman -S firefox plasma sddm konsole dolphin
 sudo systemctl enable sddm
 sudo systemctl status sddm
