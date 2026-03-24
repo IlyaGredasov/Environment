@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug (clang + lldb)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.exe",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build cpp",
+            "initCommands": [
+                "settings set target.process.thread.step-avoid-regexp \"^std::|^__|^_|^_crt|^__scrt\"",
+                "settings set stop-disassembly-display never"
+            ]
+        }
+    ]
+}
