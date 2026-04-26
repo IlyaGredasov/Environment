@@ -1,0 +1,38 @@
+{
+    "Ctrl-s": "Save",
+    "Ctrl-q": "Quit",
+    "Ctrl-f": "Find",
+    "Ctrl-z": "Undo",
+    "Ctrl-y": "Redo",
+    "Ctrl-c": "Copy",
+    "Ctrl-x": "Cut",
+    "Ctrl-v": "Paste",
+    "Ctrl-a": "SelectAll",
+
+    "Ctrl-Left": "WordLeft",
+    "Ctrl-Right": "WordRight",
+    "OldBackspace": "DeleteWordLeft",
+    "Ctrl-Delete": "DeleteWordRight",
+	
+    "Alt-/": "lua:comment.comment",
+    "CtrlUnderscore": "lua:comment.comment",
+
+    "Alt-Up": "MoveLinesUp",
+    "Alt-Down": "MoveLinesDown",
+    "Alt-j": "MoveLinesDown",
+    "Alt-k": "MoveLinesUp",
+
+    "Ctrl-d": "DuplicateLine",
+    "Ctrl-l": "SelectLine",
+    "Ctrl-g": "JumpLine",
+    "Ctrl-p": "CommandMode",
+    "F1": "CommandMode",
+
+    "Ctrl-Tab": "NextTab",
+    "Ctrl-Shift-Tab": "PreviousTab",
+
+    "Home": "StartOfLine",
+    "End": "EndOfLine",
+    "Ctrl-Home": "Start",
+    "Ctrl-End": "End"
+}
