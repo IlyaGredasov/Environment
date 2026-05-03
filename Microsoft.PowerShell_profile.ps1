@@ -1,6 +1,7 @@
 Import-Module PSReadLine
 Set-Alias -Name np -Value notepad3.exe
 Set-Alias -Name mc -Value micro.exe
+function ps-history { & notepad3.exe (get-PSReadlineOption).HistorySavePath $args }
 function ffmpeg { & ffmpeg.exe -hide_banner $args }
 function ffprobe { & ffprobe.exe -hide_banner $args }
 function ffplay { & ffplay.exe -hide_banner $args }
