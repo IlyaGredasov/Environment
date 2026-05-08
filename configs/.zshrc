@@ -23,12 +23,17 @@ ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=214'
 ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=214'
 ZSH_HIGHLIGHT_STYLES[dollar-quoted-argument]='fg=215'
 
-source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+if [ -e "/usr/share/zsh/plugins/" ]; then
+	source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+	source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+else
+	source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+	source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi
 
 HISTFILE=~/.zsh_history
-HISTSIZE=200000
-SAVEHIST=200000
+HISTSIZE=400000
+SAVEHIST=400000
 
 setopt SHARE_HISTORY
 setopt INC_APPEND_HISTORY
