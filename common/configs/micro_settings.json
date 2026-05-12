@@ -1,0 +1,7 @@
+{
+    "autoclose": false,
+    "autoindent": false,
+    "colorscheme": "railscast",
+    "mkparents": true,
+    "softwrap": true
+}
