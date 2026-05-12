@@ -48,9 +48,9 @@ setopt HIST_FIND_NO_DUPS
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
 alias ls='ls --color=auto'
+alias la='ls -la'
 alias grep='grep --color=auto'
 alias history='cat ~/.zsh_history'
-alias la='ls -la'
 alias mc='micro'
 alias ffmpeg='ffmpeg -hide_banner'
 alias ffprobe='ffprobe -hide_banner'
