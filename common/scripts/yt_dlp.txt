@@ -1,0 +1,1 @@
+yt-dlp -o "%(playlist)s/%(title)s.%(ext)s" --yes-playlist --no-check-certificates -N 12 --js-runtime node --remote-components ejs:github --extractor-args generic:impersonate --cookies .\yt_cookies.txt -a .\videos.txt
