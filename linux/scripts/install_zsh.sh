@@ -6,8 +6,7 @@ usage() {
 Usage: install_zsh.sh [-u USER] [--environ PATH]
 
 Install zsh helpers, set USER\'s shell to zsh, remove bash leftovers, and link:
-  ~/.zshrc     -> ENVIRON/linux/configs/.zshrc
-  ~/.dircolors -> ENVIRON/linux/configs/.dircolors
+  ~/.zshrc -> ENVIRON/linux/configs/.zshrc
 
 Defaults:
   USER    current invoking user
@@ -111,7 +110,6 @@ run_root chsh -s "$zsh_path" "$target_user"
 
 rm -f -- "$user_home/.bashrc" "$user_home/.bash_history"
 link_file "$config_dir/.zshrc" "$user_home/.zshrc"
-link_file "$config_dir/.dircolors" "$user_home/.dircolors"
 chsh -s /bin/zsh $target_user
 echo "Installed zsh config for $target_user"
 sudo reboot
