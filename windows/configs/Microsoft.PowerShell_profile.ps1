@@ -1,6 +1,6 @@
 Import-Module PSReadLine
 Set-Alias -Name np -Value notepad++.exe
-Set-Alias -Name mc -Value micro.exe
+Set-Alias -Name mcr -Value micro.exe
 function ps-history { & notepad3.exe (get-PSReadlineOption).HistorySavePath }
 function rm-rf {
     param([Parameter(Mandatory=$true)][string]$Path)
