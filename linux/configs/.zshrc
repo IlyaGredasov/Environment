@@ -63,3 +63,5 @@ bindkey '^[[3;5~' kill-word
 bindkey '^[[3~' delete-char
 
 PROMPT='%F{208}[%~]$ %f'
+
+export PATH=$PATH:/home/$(whoami)/.local/bin
