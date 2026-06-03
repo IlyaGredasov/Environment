@@ -16,7 +16,7 @@ def normalize_indent(line: str, tab_size: int = 4) -> str:
     width = spaces + tabs * tab_size
     new_tabs = math.ceil(width / tab_size)
 
-    return "\t" * new_tabs + line[len(prefix):]
+    return "\t" * new_tabs + line[len(prefix) :]
 
 
 def parse_args() -> argparse.Namespace:
