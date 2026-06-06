@@ -37,19 +37,10 @@ def extract_final_link(text: str) -> str | None:
     return name if is_valid_filename(name) else None
 
 
-def build_title_map(md_files: list[str]) -> dict[str, str]:
-    return {
-        os.path.abspath(path): os.path.splitext(os.path.basename(path))[0]
-        for path in md_files
-    }
-
-
 def build_parents(
     md_files: list[str],
-) -> tuple[dict[str, str | None], dict[str, str | None], dict[str, set[str]]]:
+) -> dict[str, str | None]:
     file_parent = {}
-    title_parent = {}
-    children_titles = {}
 
     for path in md_files:
         abs_path = os.path.abspath(path)
@@ -68,29 +59,58 @@ def build_parents(
 
         file_parent[abs_path] = parent
 
-        if title not in title_parent:
-            title_parent[title] = parent
-
-        if parent:
-            children_titles.setdefault(parent, set()).add(title)
-
-    return file_parent, title_parent, children_titles
+    return file_parent
 
 
-def build_chain_for_file(
-    abs_path: str,
+def build_chains(
     file_parent: dict[str, str | None],
-    title_parent: dict[str, str | None],
-) -> list[str]:
-    chain = []
-    current = file_parent.get(abs_path)
+) -> tuple[dict[str, list[str]], set[str]]:
+    title_paths = {}
+    for path in file_parent:
+        title = os.path.splitext(os.path.basename(path))[0]
+        title_paths.setdefault(title, []).append(path)
 
-    while current:
-        chain.append(current)
-        current = title_parent.get(current)
+    chains = {}
+    resolved_parents = {}
 
-    chain.reverse()
-    return chain
+    def resolve(path: str, visiting: set[str]) -> list[str] | None:
+        if path in chains:
+            return chains[path]
+        if path in visiting:
+            return None
+
+        parent_title = file_parent[path]
+        if not parent_title:
+            chains[path] = []
+            return chains[path]
+
+        candidates = []
+        for candidate_path in title_paths.get(parent_title, []):
+            candidate_chain = resolve(candidate_path, visiting | {path})
+            if candidate_chain is not None:
+                candidates.append((candidate_chain + [parent_title], candidate_path))
+
+        if not candidates:
+            chains[path] = [parent_title]
+            return chains[path]
+
+        chain, parent_path = min(
+            candidates,
+            key=lambda item: (len(item[0]), os.path.normcase(item[1])),
+        )
+        chains[path] = chain
+        resolved_parents[path] = parent_path
+        return chain
+
+    for path in file_parent:
+        resolve(path, set())
+
+    return chains, set(resolved_parents.values())
+
+
+def build_relative_path(title: str, chain: list[str], has_children: bool) -> str:
+    parts = chain + ([title] if has_children else []) + [title + ".md"]
+    return os.path.join(*parts)
 
 
 def move_all_safely(moves: list[tuple[str, str]]) -> None:
@@ -129,22 +149,14 @@ def main() -> None:
     root = os.path.abspath(args.root)
     md_files = collect_md_files(root)
 
-    path_to_title = build_title_map(md_files)
-    file_parent, title_parent, children_titles = build_parents(md_files)
+    file_parent = build_parents(md_files)
+    chains, referenced_paths = build_chains(file_parent)
 
     moves = []
 
-    for src_abs, title in path_to_title.items():
-        chain = build_chain_for_file(src_abs, file_parent, title_parent)
-
-        if title in children_titles:
-            rel = (
-                os.path.join(*chain, title, title + ".md")
-                if chain
-                else os.path.join(title, title + ".md")
-            )
-        else:
-            rel = os.path.join(*chain, title + ".md") if chain else title + ".md"
+    for src_abs, chain in chains.items():
+        title = os.path.splitext(os.path.basename(src_abs))[0]
+        rel = build_relative_path(title, chain, src_abs in referenced_paths)
 
         dst_abs = os.path.abspath(os.path.join(root, rel))
 
