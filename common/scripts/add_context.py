@@ -174,6 +174,13 @@ def parse_args(argv: list[str] | None = None) -> ParsedArgs:
             root = args[index]
             index += 1
 
+        if not regex:
+            pattern = normalize_input_path(
+                pattern,
+                preserve_trailing_slash=not is_selector,
+            )
+        root = normalize_input_path(root)
+
         if not is_selector and regex:
             target.append(PatternSpec(pattern, regex=True))
         else:
@@ -189,10 +196,13 @@ def to_posix(path: Path) -> str:
         return path.resolve().as_posix()
 
 
-def normalize_input_path(path: str) -> str:
-    normalized = path.replace("\\", "/").rstrip("/")
+def normalize_input_path(path: str, preserve_trailing_slash: bool = False) -> str:
+    normalized = path.replace("\\", "/")
     while normalized.startswith("./"):
         normalized = normalized[2:]
+    is_root = normalized == "/" or re.fullmatch(r"[A-Za-z]:/", normalized) is not None
+    if not preserve_trailing_slash and not is_root:
+        normalized = normalized.rstrip("/")
     return normalized or "."
 
 
@@ -238,7 +248,7 @@ def parse_ignore_rule(spec: PatternSpec) -> IgnoreSpec | None:
         except re.error:
             return None
 
-    pattern = pattern.replace("\\", "/")
+    pattern = normalize_input_path(pattern, preserve_trailing_slash=True)
     anchored = pattern.startswith("/")
     pattern = pattern.lstrip("/")
     directory_only = pattern.endswith("/")
