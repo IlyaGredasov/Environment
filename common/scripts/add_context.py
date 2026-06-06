@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import fnmatch
 import glob
 import os
@@ -546,7 +545,7 @@ def main() -> int:
     for match in cat_files:
         if not match.path.is_file():
             continue
-        print(f"# {match.display_path}")
+        print(f"### {match.display_path}")
         try:
             print(match.path.read_text(encoding="utf-8"), end="")
         except UnicodeDecodeError:
