@@ -1,0 +1,50 @@
+{
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "files.autoSave": "afterDelay",
+    "terminal.integrated.allowedLinkSchemes": [
+        "file",
+        "http",
+        "https",
+        "mailto",
+        "vscode",
+        "vscode-insiders",
+        "docker-desktop"
+    ],
+    "cmake.automaticReconfigure": false,
+    "cmake.buildBeforeRun": false,
+    "cmake.configureOnEdit": false,
+    "cmake.configureOnOpen": false,
+    "explorer.confirmDelete": false,
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "terminal.integrated.tabs.defaultColor": "terminal.ansiBlack",
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports.ruff": "explicit",
+            "source.fixAll.ruff": "explicit"
+        }
+    },
+    "ruff.lint.enable": true,
+    "workbench.startupEditor": "none",
+    "chatgpt.localeOverride": null,
+    "C_Cpp.clang_format_sortIncludes": true,
+    "C_Cpp.clang_format_style": "file: F:\\Programming\\C++\\.clang-format",
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.default.compilerPath": "F:\\Installed\\LLVM\\bin\\clang++",
+    "C_Cpp.clang_format_fallbackStyle": "",
+    "[cpp]": {
+        "editor.defaultFormatter": "xaver.clang-format"
+    },
+    "cmake.useVsDeveloperEnvironment": "never",
+    "editor.unicodeHighlight.ambiguousCharacters": false,
+    "terminal.integrated.cursorStyle": "line",
+    "terminal.integrated.initialHint": false,
+    "terminal.integrated.enableMultiLinePasteWarning": "never",
+    "workbench.editor.empty.hint": "hidden",
+    "python.analysis.typeCheckingMode": "basic",
+    "workbench.colorTheme": "RailsCasts Theme",
+    "chat.viewSessions.orientation": "stacked",
+    "chat.disableAIFeatures": true,
+    "window.zoomLevel": -1.5
+}

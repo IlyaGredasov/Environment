@@ -1,0 +1,19 @@
+CompileFlags:
+  CompilationDatabase: build
+  Add:
+    - -std=c++17
+    - -Wall
+    - -Wextra
+  Remove:
+    - -Werror
+
+Index:
+  Background: Build
+
+Diagnostics:
+  ClangTidy: false
+  UnusedIncludes: Strict
+  MissingIncludes: None
+
+Completion:
+  AllScopes: true

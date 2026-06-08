@@ -21,6 +21,7 @@ class PatternSpec:
     pattern: str
     regex: bool = False
     root: str = "."
+    max_depth: int | None = None
 
 
 @dataclass(frozen=True)
@@ -51,17 +52,21 @@ IgnoreSpec = IgnoreRule | RegexIgnoreRule
 
 def usage() -> str:
     return (
-        "Usage: add_context.py [-t|-tr PATTERN [ROOT]]... [-c|-cr PATTERN [ROOT]]...\n"
+        "Usage: add_context.py [-t|-tr [-dN] PATTERN [ROOT]]...\n"
+        "                      [-c|-cr [-dN] PATTERN [ROOT]]...\n"
         "                      [-ti|-tir PATTERN]... [-ci|-cir PATTERN]...\n\n"
         "Print selected repository paths as a tree and/or with contents.\n\n"
         "Options:\n"
-        "  -t, --tree         Add matching files to the tree section.\n"
+        "  -t, --tree         Add matching paths to the tree section.\n"
         "  -c, --cat          Print matching files with their contents.\n"
         "  -ti, --tree-ignore Ignore files only for tree output.\n"
         "  -ci, --cat-ignore  Ignore files only for cat output.\n"
         "  -tr, -cr           Regex variants of -t and -c.\n"
         "  -tir, -cir         Regex variants of -ti and -ci.\n"
+        "  -dN                Limit the preceding selector to depth N.\n"
         "  -h, --help         Show this help message and exit.\n\n"
+        "Depth uses find-style levels: the selected root is depth 0.\n"
+        "Example: -t -d1 . is equivalent to find . -maxdepth 1.\n\n"
         "Patterns can be literal paths, glob patterns including **, simple brace\n"
         "globs like src/*.{cpp,hpp}, or regular expressions matched against\n"
         "repo paths when no literal/glob match is found.\n\n"
@@ -125,6 +130,7 @@ def parse_option(
 def is_option_token(token: str) -> bool:
     return (
         token in {"-r", "--regex", "-h", "--help"}
+        or parse_depth_option(token) is not None
         or parse_short_option(token) is not None
         or token
         in {
@@ -134,6 +140,11 @@ def is_option_token(token: str) -> bool:
             "--cat-ignore",
         }
     )
+
+
+def parse_depth_option(option: str) -> int | None:
+    match = re.fullmatch(r"-d(\d+)", option)
+    return int(match.group(1)) if match is not None else None
 
 
 def parse_args(argv: list[str] | None = None) -> ParsedArgs:
@@ -155,6 +166,12 @@ def parse_args(argv: list[str] | None = None) -> ParsedArgs:
 
         target, is_selector, regex = parsed_option
         index += 1
+
+        max_depth = None
+        if is_selector and index < len(args):
+            max_depth = parse_depth_option(args[index])
+            if max_depth is not None:
+                index += 1
 
         if index >= len(args) or is_option_token(args[index]):
             print(f"add_context.py: missing value for {option}", file=sys.stderr)
@@ -184,7 +201,14 @@ def parse_args(argv: list[str] | None = None) -> ParsedArgs:
         if not is_selector and regex:
             target.append(PatternSpec(pattern, regex=True))
         else:
-            target.append(PatternSpec(pattern, regex=regex, root=root))
+            target.append(
+                PatternSpec(
+                    pattern,
+                    regex=regex,
+                    root=root,
+                    max_depth=max_depth,
+                )
+            )
 
     return parsed
 
@@ -381,13 +405,20 @@ def glob_matches(pattern: str) -> list[Path]:
     return list(ROOT.glob(pattern.replace("\\", "/")))
 
 
-def iter_repo_items(root: Path, rules: list[IgnoreSpec]) -> list[Path]:
+def iter_repo_items(
+    root: Path, rules: list[IgnoreSpec], max_depth: int | None = None
+) -> list[Path]:
     items: list[Path] = []
     if root.is_file():
         return [root] if not is_ignored(root, False, rules) else []
 
     for current_root, dirnames, filenames in os.walk(root):
         current = Path(current_root)
+        current_depth = len(current.resolve().relative_to(root.resolve()).parts)
+        if max_depth is not None and current_depth >= max_depth:
+            dirnames.clear()
+            continue
+
         dirnames[:] = sorted(
             dirname
             for dirname in dirnames
@@ -402,7 +433,11 @@ def iter_repo_items(root: Path, rules: list[IgnoreSpec]) -> list[Path]:
     return items
 
 
-def get_pattern_matches(pattern: str, rules: list[IgnoreSpec]) -> list[Match]:
+def get_pattern_matches(
+    pattern: str,
+    rules: list[IgnoreSpec],
+    max_depth: int | None = None,
+) -> list[Match]:
     matches: list[Match] = []
     found = False
 
@@ -425,7 +460,7 @@ def get_pattern_matches(pattern: str, rules: list[IgnoreSpec]) -> list[Match]:
     except re.error:
         return []
 
-    for item in iter_repo_items(ROOT, rules):
+    for item in iter_repo_items(ROOT, rules, max_depth):
         relative_path = to_posix(item)
         if regex.search(relative_path):
             matches.append(Match(item, relative_path))
@@ -433,7 +468,12 @@ def get_pattern_matches(pattern: str, rules: list[IgnoreSpec]) -> list[Match]:
     return matches
 
 
-def get_regex_matches(pattern: str, root: str, rules: list[IgnoreSpec]) -> list[Match]:
+def get_regex_matches(
+    pattern: str,
+    root: str,
+    rules: list[IgnoreSpec],
+    max_depth: int | None = None,
+) -> list[Match]:
     try:
         regex = re.compile(pattern)
     except re.error:
@@ -444,7 +484,7 @@ def get_regex_matches(pattern: str, root: str, rules: list[IgnoreSpec]) -> list[
         return []
 
     matches: list[Match] = []
-    for item in iter_repo_items(search_root, rules):
+    for item in iter_repo_items(search_root, rules, max_depth):
         relative_path = to_posix(item)
         if regex.search(relative_path):
             matches.append(Match(item, relative_path))
@@ -460,45 +500,85 @@ def child_display_path(display_root: str, root_path: Path, child_path: Path) -> 
     return f"{display_root}/{child_relative}"
 
 
-def iter_files_under(
-    directory: Path, display_root: str, rules: list[IgnoreSpec]
+def iter_items_under(
+    directory: Path,
+    display_root: str,
+    rules: list[IgnoreSpec],
+    max_depth: int | None = None,
+    include_directories: bool = False,
 ) -> list[Match]:
-    files: list[Match] = []
+    items: list[Match] = []
     for current_root, dirnames, filenames in os.walk(directory):
         current = Path(current_root)
+        current_depth = len(current.resolve().relative_to(directory.resolve()).parts)
+        if max_depth is not None and current_depth >= max_depth:
+            dirnames.clear()
+            continue
+
         dirnames[:] = sorted(
             dirname
             for dirname in dirnames
             if dirname != ".git" and not is_ignored(current / dirname, True, rules)
         )
+        if include_directories:
+            for dirname in dirnames:
+                directory_path = current / dirname
+                items.append(
+                    Match(
+                        directory_path,
+                        child_display_path(display_root, directory, directory_path),
+                    )
+                )
         for filename in sorted(filenames):
             file_path = current / filename
             if not is_ignored(file_path, False, rules):
-                files.append(
+                items.append(
                     Match(
                         file_path,
                         child_display_path(display_root, directory, file_path),
                     )
                 )
-    return files
+    return items
 
 
-def get_matching_files(spec: PatternSpec, rules: list[IgnoreSpec]) -> list[Match]:
-    files: list[Match] = []
+def get_matching_items(
+    spec: PatternSpec,
+    rules: list[IgnoreSpec],
+    include_directories: bool = False,
+) -> list[Match]:
+    include_directories = include_directories and spec.max_depth is not None
+    items: list[Match] = []
     matches = (
-        get_regex_matches(spec.pattern, spec.root, rules)
+        get_regex_matches(spec.pattern, spec.root, rules, spec.max_depth)
         if spec.regex
-        else get_pattern_matches(spec.pattern, rules)
+        else get_pattern_matches(spec.pattern, rules, spec.max_depth)
     )
     for match in matches:
         path = match.path
         if not path.exists() or is_ignored(path, path.is_dir(), rules):
             continue
         if path.is_dir():
-            files.extend(iter_files_under(path, match.display_path, rules))
+            if include_directories and match.display_path != ".":
+                items.append(match)
+
+            remaining_depth = spec.max_depth
+            if spec.regex and remaining_depth is not None:
+                search_root = resolve_path(spec.root).resolve()
+                match_depth = len(path.resolve().relative_to(search_root).parts)
+                remaining_depth -= match_depth
+
+            items.extend(
+                iter_items_under(
+                    path,
+                    match.display_path,
+                    rules,
+                    remaining_depth,
+                    include_directories,
+                )
+            )
         elif path.is_file():
-            files.append(Match(path, match.display_path))
-    return files
+            items.append(Match(path, match.display_path))
+    return items
 
 
 def dedupe_key(path: Path) -> str:
@@ -506,11 +586,15 @@ def dedupe_key(path: Path) -> str:
     return resolved.casefold() if os.name == "nt" else resolved
 
 
-def collect(patterns: list[PatternSpec], rules: list[IgnoreSpec]) -> list[Match]:
+def collect(
+    patterns: list[PatternSpec],
+    rules: list[IgnoreSpec],
+    include_directories: bool = False,
+) -> list[Match]:
     seen: set[str] = set()
     results: list[Match] = []
     for pattern in patterns:
-        for match in get_matching_files(pattern, rules):
+        for match in get_matching_items(pattern, rules, include_directories):
             key = dedupe_key(match.path)
             if key not in seen:
                 seen.add(key)
@@ -519,8 +603,16 @@ def collect(patterns: list[PatternSpec], rules: list[IgnoreSpec]) -> list[Match]
 
 
 def render_tree(paths: list[str]) -> None:
+    parent_paths = {
+        "/".join(parts[:index])
+        for path in paths
+        for parts in [path.split("/")]
+        for index in range(1, len(parts))
+    }
     seen_dirs: set[str] = set()
     for path in paths:
+        if path in parent_paths:
+            continue
         parts = path.split("/")
         for index in range(len(parts) - 1):
             directory = "/".join(parts[: index + 1])
@@ -543,7 +635,7 @@ def main() -> int:
     tree_rules = compile_ignore_rules(args.tree_ignore)
     cat_rules = compile_ignore_rules(args.cat_ignore)
 
-    tree_files = collect(args.tree, tree_rules)
+    tree_files = collect(args.tree, tree_rules, include_directories=True)
     cat_files = collect(args.cat, cat_rules)
 
     if tree_files:

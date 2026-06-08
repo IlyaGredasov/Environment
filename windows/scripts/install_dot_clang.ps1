@@ -7,15 +7,16 @@ Usage: install_dot_clang.ps1 [-u USER] [--environ PATH]
 Link:
   <ENVIRON drive>:\Programming\C++\.clang-format -> ENVIRON\common\configs\.clang-format
   <ENVIRON drive>:\Programming\C++\.clang-tidy   -> ENVIRON\common\configs\.clang-tidy
+  <ENVIRON drive>:\Programming\C++\.clangd       -> ENVIRON\common\configs\.clangd
 
 Defaults:
   USER    current user; accepted for parity with Linux scripts
-  ENVIRON D:\Programming\Environment
+  ENVIRON repository root containing this script
 "@
 }
 
 $targetUser = $env:USERNAME
-$environ = "D:\Programming\Environment"
+$environ = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
 
 for ($i = 0; $i -lt $args.Count; $i++) {
     switch ($args[$i]) {
@@ -80,18 +81,26 @@ function Resolve-ClangSource {
     throw "install_dot_clang.ps1: missing source for $Name"
 }
 
-function New-FileSymlink {
+function New-FileLink {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
         [Parameter(Mandatory = $true)][string]$Target
     )
 
-    if ((Test-Path -LiteralPath $Target) -and -not ((Get-Item -LiteralPath $Target -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
-        throw "install_dot_clang.ps1: refusing to replace non-symlink: $Target"
+    if (Test-Path -LiteralPath $Target) {
+        $targetItem = Get-Item -LiteralPath $Target -Force
+        if ($targetItem.LinkType -notin @("SymbolicLink", "HardLink")) {
+            throw "install_dot_clang.ps1: refusing to replace non-link: $Target"
+        }
     }
 
     Remove-Item -LiteralPath $Target -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType SymbolicLink -Path $Target -Target $Source -Force | Out-Null
+    try {
+        New-Item -ItemType SymbolicLink -Path $Target -Target $Source -Force | Out-Null
+    }
+    catch [System.UnauthorizedAccessException] {
+        New-Item -ItemType HardLink -Path $Target -Target $Source -Force | Out-Null
+    }
 }
 
 $environ = Resolve-EnvironmentPath $environ
@@ -107,8 +116,10 @@ New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
 
 $clangFormat = Resolve-ClangSource $environ ".clang-format"
 $clangTidy = Resolve-ClangSource $environ ".clang-tidy"
+$clangd = Resolve-ClangSource $environ ".clangd"
 
-New-FileSymlink $clangFormat (Join-Path $targetDir ".clang-format")
-New-FileSymlink $clangTidy (Join-Path $targetDir ".clang-tidy")
+New-FileLink $clangFormat (Join-Path $targetDir ".clang-format")
+New-FileLink $clangTidy (Join-Path $targetDir ".clang-tidy")
+New-FileLink $clangd (Join-Path $targetDir ".clangd")
 
 Write-Host "Installed clang config links for $targetUser"

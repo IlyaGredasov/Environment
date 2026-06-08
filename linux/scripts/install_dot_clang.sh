@@ -8,6 +8,7 @@ Usage: install_dot_clang.sh [-u USER] [--environ PATH]
 Link:
   ~/Programming/C++/.clang-format -> ENVIRON/common/configs/.clang-format
   ~/Programming/C++/.clang-tidy   -> ENVIRON/common/configs/.clang-tidy
+  ~/Programming/C++/.clangd       -> ENVIRON/common/configs/.clangd
 
 Defaults:
   USER    current invoking user
@@ -107,8 +108,10 @@ chown_user_dir "$target_dir"
 
 clang_format=$(resolve_source ".clang-format")
 clang_tidy=$(resolve_source ".clang-tidy")
+clangd=$(resolve_source ".clangd")
 
 link_file "$clang_format" "$target_dir/.clang-format"
 link_file "$clang_tidy" "$target_dir/.clang-tidy"
+link_file "$clangd" "$target_dir/.clangd"
 
 echo "Installed clang config links for $target_user"
