@@ -2,6 +2,7 @@
     "autoclose": false,
     "autoindent": false,
     "colorscheme": "railscast",
+    "clipboard": "external",
     "mkparents": true,
     "softwrap": true
 }
