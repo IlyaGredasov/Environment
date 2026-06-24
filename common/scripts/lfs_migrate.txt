@@ -1,0 +1,7 @@
+git lfs install
+git lfs migrate import --everything --include="*.pt,*.onnx"
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+git lfs ls-files
+git push origin --force --all
+git push origin --force --tags
