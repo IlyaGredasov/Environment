@@ -1,0 +1,41 @@
+[filter "lfs"]
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+[user]
+	name = IlyaGredasov
+	email = iljagredasov@yandex.ru
+[credential]
+	helper = manager
+[core]
+	editor = micro
+	ignorecase = false
+[init]
+	defaultBranch = main
+[alias]
+	co = checkout
+	st = status
+	lg = log --oneline --graph --decorate --all
+[pull]
+	rebase = true
+	ff = only
+[push]
+	default = simple
+	autoSetupRemote = true
+[rebase]
+	autosquash = true
+	autoStash = true
+[diff]
+	colorMoved = true
+[log]
+	date = iso
+[color]
+	ui = auto
+	diff = true
+[fetch]
+	prune = true
+	parallel = 4
+[gc]
+	auto = 256
+	pruneExpire = 2.weeks.ago
