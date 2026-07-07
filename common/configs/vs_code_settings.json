@@ -29,9 +29,9 @@
     "workbench.startupEditor": "none",
     "chatgpt.localeOverride": null,
     "C_Cpp.clang_format_sortIncludes": true,
-    "C_Cpp.clang_format_style": "file: F:\\Programming\\C++\\.clang-format",
+    "C_Cpp.clang_format_style": "file: ~/Programming/C++/.clang-format",
     "C_Cpp.formatting": "clangFormat",
-    "C_Cpp.default.compilerPath": "F:\\Installed\\LLVM\\bin\\clang++",
+    "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "C_Cpp.clang_format_fallbackStyle": "",
     "[cpp]": {
         "editor.defaultFormatter": "xaver.clang-format"
