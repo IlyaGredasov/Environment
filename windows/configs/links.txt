@@ -1,8 +1,0 @@
-D:\Programming\C++\.clang-format -> .clang-format
-D:\Programming\C++\.clang-tidy -> .clang-tidy
-D:\Programming\C++\.clangd -> .clangd
-C:\Users\User\.gitconfig -> .gitconfig
-C:\Users\User\.config\micro\settings.json -> micro_settings.json
-C:\Users\User\.config\micro\bindings.json -> micro_bindings.json
-C:\Users\User\AppData\Roaming\Code\User\settings.json -> vs_code_settings.json
-C:\Users\User\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 -> Microsoft.PowerShell_profile.ps1
