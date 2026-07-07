@@ -1,27 +1,15 @@
-eval "$(dircolors -b ~/.dircolors)"
 autoload -U colors && colors
-typeset -A ZSH_HIGHLIGHT_STYLES
 
-ZSH_HIGHLIGHT_STYLES[default]='fg=214'
+ZSH_COLOR_THEME="${ZSH_COLOR_THEME:-orange}"
+ZSH_COLOR_THEME="violet"
 
-ZSH_HIGHLIGHT_STYLES[command]='fg=208'
-ZSH_HIGHLIGHT_STYLES[precommand]='fg=208'
-ZSH_HIGHLIGHT_STYLES[arg0]='fg=208'
-
-ZSH_HIGHLIGHT_STYLES[builtin]='fg=214'
-ZSH_HIGHLIGHT_STYLES[function]='fg=215'
-ZSH_HIGHLIGHT_STYLES[alias]='fg=214'
-ZSH_HIGHLIGHT_STYLES[suffix-alias]='fg=214'
-
-ZSH_HIGHLIGHT_STYLES[path]='fg=216'
-ZSH_HIGHLIGHT_STYLES[globbing]='fg=215'
-ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=209'
-
-ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=166'
-ZSH_HIGHLIGHT_STYLES[redirection]='fg=209'
-ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=214'
-ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=214'
-ZSH_HIGHLIGHT_STYLES[dollar-quoted-argument]='fg=215'
+if [[ "$ZSH_COLOR_THEME" == "violet" ]]; then
+	eval "$(dircolors -b ~/.violet.dircolors)"
+	source ~/Programming/Environment/linux/scripts/.violet.zsh
+else
+	eval "$(dircolors -b ~/.orange.dircolors)"
+	source ~/Programming/Environment/linux/scripts/.orange.zsh
+fi
 
 if [ -e "/usr/share/zsh/plugins/" ]; then
 	source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
@@ -55,13 +43,13 @@ alias mcr='micro'
 alias ffmpeg='ffmpeg -hide_banner'
 alias ffprobe='ffprobe -hide_banner'
 alias ffplay='ffplay -hide_banner'
+alias pacman_upgrade='sudo pacman -Syu --noconfirm && yay -Syu --noconfirm' 
+alias pacman_autoremove='sudo pacman -Rns $(pacman -Qdtq)'
 
 bindkey '^[[1;5D' backward-word
 bindkey '^[[1;5C' forward-word
 bindkey '^H' backward-kill-word
 bindkey '^[[3;5~' kill-word
 bindkey '^[[3~' delete-char
-
-PROMPT='%F{208}[%~]$ %f'
 
 export PATH=$PATH:/home/$(whoami)/.local/bin
