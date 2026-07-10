@@ -1,4 +1,5 @@
 autoload -U colors && colors
+autoload -Uz compinit && compinit
 
 ZSH_COLOR_THEME="${ZSH_COLOR_THEME:-orange}"
 ZSH_COLOR_THEME="violet"
@@ -53,3 +54,4 @@ bindkey '^[[3;5~' kill-word
 bindkey '^[[3~' delete-char
 
 export PATH=$PATH:/home/$(whoami)/.local/bin
+eval "$(uv generate-shell-completion zsh)"
