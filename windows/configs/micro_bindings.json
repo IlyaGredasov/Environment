@@ -1,5 +1,5 @@
 {
-	"Ctrl-Left": "WordLeft",
+    "Ctrl-Left": "WordLeft",
     "Ctrl-Right": "WordRight",
     "Ctrl-Backspace": "DeleteWordLeft",
     "Ctrl-Delete": "DeleteWordRight"

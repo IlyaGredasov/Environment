@@ -5,11 +5,11 @@ ZSH_COLOR_THEME="${ZSH_COLOR_THEME:-orange}"
 ZSH_COLOR_THEME="violet"
 
 if [[ "$ZSH_COLOR_THEME" == "violet" ]]; then
-	eval "$(dircolors -b ~/.violet.dircolors)"
-	source ~/Programming/Environment/linux/scripts/.violet.zsh
+	eval "$(dircolors -b ~/.violet_dircolors)"
+	source ~/Programming/Environment/linux/scripts/violet.zsh
 else
-	eval "$(dircolors -b ~/.orange.dircolors)"
-	source ~/Programming/Environment/linux/scripts/.orange.zsh
+	eval "$(dircolors -b ~/.orange_dircolors)"
+	source ~/Programming/Environment/linux/scripts/orange.zsh
 fi
 
 if [ -e "/usr/share/zsh/plugins/" ]; then
@@ -45,7 +45,7 @@ alias ffmpeg='ffmpeg -hide_banner'
 alias ffprobe='ffprobe -hide_banner'
 alias ffplay='ffplay -hide_banner'
 alias pacman_upgrade='sudo pacman -Syu --noconfirm && yay -Syu --noconfirm' 
-alias pacman_autoremove='sudo pacman -Rns $(pacman -Qdtq)'
+alias pacman_autoremove='sudo pacman -Rns $(pacman -Qdttq)'
 
 bindkey '^[[1;5D' backward-word
 bindkey '^[[1;5C' forward-word

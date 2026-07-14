@@ -30,6 +30,7 @@
     "chatgpt.localeOverride": null,
     "C_Cpp.clang_format_sortIncludes": true,
     "C_Cpp.clang_format_style": "file: ~/Programming/C++/.clang-format",
+    "C_Cpp.default.intelliSenseMode": "windows-clang-x64",
     "C_Cpp.formatting": "clangFormat",
     "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "C_Cpp.clang_format_fallbackStyle": "",
@@ -46,5 +47,19 @@
     "workbench.colorTheme": "RailsCasts Theme",
     "chat.viewSessions.orientation": "stacked",
     "chat.disableAIFeatures": true,
-    "window.zoomLevel": -1.5
+    "security.workspace.trust.untrustedFiles": "open",
+    "chatgpt.followUpQueueMode": "steer",
+    "redhat.telemetry.enabled": false,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.enableParallelIndexing": true,
+    "python.analysis.languageServerMode": "light",
+    "yaml.disableSchemaDetection": [],
+    "python.analysis.autoFormatStrings": true,
+    "[dockercompose]": {
+        "editor.defaultFormatter": "ms-azuretools.vscode-containers"
+    },
+    "python.analysis.diagnosticMode": "workspace",
+    "git.suggestSmartCommit": false,
+    "window.zoomLevel": -1.5,
+    "yaml.schemaStore.enable": false
 }
