@@ -61,5 +61,6 @@
     "python.analysis.diagnosticMode": "workspace",
     "git.suggestSmartCommit": false,
     "window.zoomLevel": -1.5,
-    "yaml.schemaStore.enable": false
+    "yaml.schemaStore.enable": false,
+    "explorer.confirmDragAndDrop": false
 }
