@@ -6,7 +6,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-
 ROOT = Path.cwd().resolve()
 
 
@@ -260,7 +259,7 @@ def parse_ignore_rule(spec: PatternSpec) -> IgnoreSpec | None:
         return None
 
     negated = False
-    if pattern.startswith("\\#") or pattern.startswith("\\!"):
+    if pattern.startswith(("\\#", "\\!")):
         pattern = pattern[1:]
     elif pattern.startswith("!"):
         negated = True
