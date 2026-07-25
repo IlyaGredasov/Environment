@@ -30,9 +30,8 @@
     "chatgpt.localeOverride": null,
     "C_Cpp.clang_format_sortIncludes": true,
     "C_Cpp.clang_format_style": "file: ~/Programming/C++/.clang-format",
-    "C_Cpp.default.intelliSenseMode": "windows-clang-x64",
+    "C_Cpp.default.intelliSenseMode": "linux-clang-x64",
     "C_Cpp.formatting": "clangFormat",
-    "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "C_Cpp.clang_format_fallbackStyle": "",
     "[cpp]": {
         "editor.defaultFormatter": "xaver.clang-format"
@@ -62,5 +61,7 @@
     "git.suggestSmartCommit": false,
     "window.zoomLevel": -1.5,
     "yaml.schemaStore.enable": false,
-    "explorer.confirmDragAndDrop": false
+    "explorer.confirmDragAndDrop": false,
+    "terminal.integrated.suggest.enabled": false,
+    "terminal.integrated.suggest.inlineSuggestion": "off"
 }
