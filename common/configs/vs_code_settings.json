@@ -63,5 +63,6 @@
     "yaml.schemaStore.enable": false,
     "explorer.confirmDragAndDrop": false,
     "terminal.integrated.suggest.enabled": false,
-    "terminal.integrated.suggest.inlineSuggestion": "off"
+    "terminal.integrated.suggest.inlineSuggestion": "off",
+    "window.restoreWindows": "none"
 }

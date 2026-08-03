@@ -43,23 +43,22 @@ Get-Content -LiteralPath $videosFile |
 
         $url = $_
         $jobs.Add((Start-Job -ArgumentList $url, $cookiesFile -ScriptBlock {
-		    param($videoUrl, $cookiesPath)
+            param($videoUrl, $cookiesPath)
 
-		    yt-dlp `
-		        -o '%(playlist|NA)s/%(title)s.%(ext)s' `
-		        --yes-playlist `
-		        --no-check-certificates `
-		        -N 12 `
-		        --js-runtime node `
-		        --remote-components ejs:github `
-		        --extractor-args 'generic:impersonate' `
-		        --cookies $cookiesPath `
-		        --merge-output-format mkv `
-		        --recode-video mkv `
-		        --postprocessor-args 'VideoConvertor+ffmpeg_o:-c:v h264_nvenc -preset p5 -cq 23 -c:a copy' `
-		        $videoUrl
-			}
-		))
+            yt-dlp `
+                -o '%(playlist|NA)s/%(title)s.%(ext)s' `
+                --yes-playlist `
+                --no-check-certificates `
+                -N 12 `
+                --js-runtime node `
+                --remote-components ejs:github `
+                --extractor-args 'generic:impersonate' `
+                --cookies $cookiesPath `
+                --recode-video mkv `
+                --postprocessor-args "VideoRemuxer:-c:v h264_nvenc -preset p5 -cq 23 -c:a copy" `
+                $videoUrl
+            }
+        ))
     }
 
 while ($jobs.Count -gt 0) {
