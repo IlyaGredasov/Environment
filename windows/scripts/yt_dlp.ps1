@@ -1,6 +1,7 @@
 param(
     [ValidateRange(1, 32)]
-    [int]$MaxParallelDownloads = 4
+    [int]$MaxParallelDownloads = 10,
+    [switch]$ForceMkv
 )
 
 [Console]::InputEncoding = [System.Text.UTF8Encoding]::new()
@@ -42,23 +43,30 @@ Get-Content -LiteralPath $videosFile |
         }
 
         $url = $_
-        $jobs.Add((Start-Job -ArgumentList $url, $cookiesFile -ScriptBlock {
-            param($videoUrl, $cookiesPath)
+        $jobs.Add((Start-Job -ArgumentList $url, $cookiesFile, $ForceMkv.ToBool() -ScriptBlock {
+            param($videoUrl, $cookiesPath, $shouldForceMkv)
 
-            yt-dlp `
-                -o '%(playlist|NA)s/%(title)s.%(ext)s' `
-                --yes-playlist `
-                --no-check-certificates `
-                -N 12 `
-                --js-runtime node `
-                --remote-components ejs:github `
-                --extractor-args 'generic:impersonate' `
-                --cookies $cookiesPath `
-                --recode-video mkv `
-                --postprocessor-args "VideoRemuxer:-c:v h264_nvenc -preset p5 -cq 23 -c:a copy" `
-                $videoUrl
+            $ytArgs = @(
+                '-o', '%(playlist|NA)s/%(title)s.%(ext)s',
+                '--yes-playlist',
+                '--no-check-certificates',
+                '-N', '12',
+                '--js-runtime', 'node',
+                '--remote-components', 'ejs:github',
+                '--extractor-args', 'generic:impersonate',
+                '--cookies', $cookiesPath,
+                '--merge-output-format', 'mkv'
+            )
+
+            if ($shouldForceMkv) {
+                $ytArgs += @(
+                    '--recode-video', 'mkv',
+                    '--postprocessor-args', 'VideoRemuxer:-c:v h264_nvenc -preset p5 -cq 23 -c:a copy'
+                )
             }
-        ))
+
+            yt-dlp @ytArgs $videoUrl
+        }))
     }
 
 while ($jobs.Count -gt 0) {
