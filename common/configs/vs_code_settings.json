@@ -64,5 +64,7 @@
     "explorer.confirmDragAndDrop": false,
     "terminal.integrated.suggest.enabled": false,
     "terminal.integrated.suggest.inlineSuggestion": "off",
-    "window.restoreWindows": "none"
+    "window.restoreWindows": "none",
+    "workbench.browser.showInTitleBar": false,
+    "window.commandCenter": false
 }
