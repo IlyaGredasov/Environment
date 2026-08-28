@@ -20,5 +20,5 @@ function rm-rf {
 }
 function grep-hist {
     param($pattern)
-    get-content (Get-PSReadlineOption).HistorySavePath | Select-String -Pattern $pattern
+    Get-Content (Get-PSReadlineOption).HistorySavePath | Select-String -Pattern $pattern
 }
