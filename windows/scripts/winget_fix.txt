@@ -1,0 +1,20 @@
+winget install CodecGuide.K-LiteCodecPack.Full --location "F:\Installed\K-Lite Codec Pack"
+winget install ElementLabs.LMStudio --location "F:\Installed\LMStudio"
+winget install FiloSottile.mkcert --location "F:\Installed"
+winget install Git.Git --location "F:\Installed\Git"
+winget install GitTower.GitFlowNext --location "F:\Installed"
+winget install Gyan.FFmpeg --location "F:\Installed\ffmpeg"
+winget install Helm.Helm --location "F:\Installed"
+winget install Notepad++.Notepad++ --location "F:\Installed\Notepad++"
+winget install OBSProject.OBSStudio --location "F:\Installed\OBSStudio"
+winget install OpenJS.NodeJS --location "F:\Installed\node"
+winget install RARLab.WinRAR --location "F:\Installed\WinRAR"
+winget install RevoUninstaller.RevoUninstaller --location "F:\Installed\RevoUninstaller"
+winget install Rufus.Rufus --location "F:\Installed"
+
+age
+kind
+OpenLens
+sops
+TensorRT
+VSCode
