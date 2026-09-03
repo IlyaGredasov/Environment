@@ -2,7 +2,6 @@ autoload -U colors && colors
 autoload -Uz compinit && compinit
 
 ZSH_COLOR_THEME="${ZSH_COLOR_THEME:-orange}"
-ZSH_COLOR_THEME="violet"
 
 if [[ "$ZSH_COLOR_THEME" == "violet" ]]; then
 	eval "$(dircolors -b ~/.violet_dircolors)"
@@ -47,11 +46,11 @@ alias ffplay='ffplay -hide_banner'
 alias pacman_upgrade='sudo pacman -Syu --noconfirm && yay -Syu --noconfirm' 
 alias pacman_autoremove='sudo pacman -Rns $(pacman -Qdttq)'
 
-bindkey '^[[1;5D' backward-word
 bindkey '^[[1;5C' forward-word
-bindkey '^H' backward-kill-word
+bindkey '^[[1;5D' backward-word
 bindkey '^[[3;5~' kill-word
+bindkey '^H' backward-kill-word
 bindkey '^[[3~' delete-char
 
 export PATH=$PATH:/home/$(whoami)/.local/bin
-eval "$(uv generate-shell-completion zsh)"
+# eval "$(uv generate-shell-completion zsh)"
