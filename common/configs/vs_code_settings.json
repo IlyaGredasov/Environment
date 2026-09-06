@@ -66,5 +66,7 @@
     "terminal.integrated.suggest.inlineSuggestion": "off",
     "window.restoreWindows": "none",
     "workbench.browser.showInTitleBar": false,
-    "window.commandCenter": false
+    "window.commandCenter": false,
+    "editor.unicodeHighlight.nonBasicASCII": false,
+    "git.confirmSync": false
 }
