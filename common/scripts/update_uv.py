@@ -6,13 +6,39 @@ import os
 import sys
 from pathlib import Path
 
-COLORS = ("cyan", "green", "yellow", "magenta", "white")
+COLORS = (
+    "red",
+    "green",
+    "yellow",
+    "blue",
+    "magenta",
+    "cyan",
+    "white",
+    "gray",
+    "bright_red",
+    "bright_green",
+    "bright_yellow",
+    "bright_blue",
+    "bright_magenta",
+    "bright_cyan",
+    "bright_white",
+)
 ANSI_COLORS = {
-    "cyan": "\033[36m",
+    "red": "\033[31m",
     "green": "\033[32m",
     "yellow": "\033[33m",
+    "blue": "\033[34m",
     "magenta": "\033[35m",
+    "cyan": "\033[36m",
     "white": "\033[37m",
+    "gray": "\033[90m",
+    "bright_red": "\033[91m",
+    "bright_green": "\033[92m",
+    "bright_yellow": "\033[93m",
+    "bright_blue": "\033[94m",
+    "bright_magenta": "\033[95m",
+    "bright_cyan": "\033[96m",
+    "bright_white": "\033[97m",
 }
 RESET = "\033[0m"
 
