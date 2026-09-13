@@ -1,6 +1,5 @@
 ln -s ~/Programming/Environment/common/configs/.clang-format ~/Programming/C++/.clang-format
 ln -s ~/Programming/Environment/common/configs/.clang-tidy ~/Programming/C++/.clang-tidy
-ln -s ~/Programming/Environment/common/configs/.clangd ~/Programming/C++/.clangd
 ln -s ~/Programming/Environment/common/configs/.gitconfig ~/.gitconfig
 ln -s ~/Programming/Environment/common/configs/micro_settings.json ~/.config/micro/settings.json
 ln -s ~/Programming/Environment/linux/configs/micro_bindings.json ~/.config/micro/bindings.json
