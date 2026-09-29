@@ -40,3 +40,5 @@
 [gc]
 	auto = 256
 	pruneExpire = 2.weeks.ago
+[credential "https://git.frizik.ru"]
+	provider = generic

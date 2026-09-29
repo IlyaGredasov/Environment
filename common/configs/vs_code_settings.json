@@ -68,5 +68,9 @@
     "workbench.browser.showInTitleBar": false,
     "window.commandCenter": false,
     "editor.unicodeHighlight.nonBasicASCII": false,
-    "git.confirmSync": false
+    "git.confirmSync": false,
+    "jupyter.askForKernelRestart": false,
+    "security.allowedUNCHosts": [
+        "wsl.localhost"
+    ]
 }
