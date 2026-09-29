@@ -53,4 +53,4 @@ bindkey '^H' backward-kill-word
 bindkey '^[[3~' delete-char
 
 export PATH=$PATH:/home/$(whoami)/.local/bin
-# eval "$(uv generate-shell-completion zsh)"
+eval "$(uv generate-shell-completion zsh)"
