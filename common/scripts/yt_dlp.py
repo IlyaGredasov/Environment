@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.14"
+# dependencies = [
+#     "tqdm>=4.70.1",
+# ]
+# ///
 """Download videos listed in a file with yt-dlp in separate processes.
 
 Each input line is handled by an independent yt-dlp invocation.  This avoids
@@ -10,14 +16,19 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from tqdm import tqdm
+
 OUTPUT_TEMPLATE = "%(playlist&{}/|)s%(title)s.%(ext)s"
 DEFAULT_PROCESSES = 4
+PROGRESS_MARKER = "__YT_PROGRESS__"
+PROGRESS_PATTERN = re.compile(r"(\d+(?:\.\d+)?)%\|?(.*)")
 
 
 def positive_process_count(value: str) -> int:
@@ -138,6 +149,9 @@ def yt_dlp_args(
         "--output",
         OUTPUT_TEMPLATE,
         "--yes-playlist",
+        "--newline",
+        "--progress-template",
+        f"download:{PROGRESS_MARKER}%(progress._percent_str)s|%(info.title)s",
         "--no-check-certificates",
         "--js-runtime",
         "node",
@@ -169,8 +183,32 @@ def yt_dlp_args(
     return args
 
 
-def download(args: list[str]) -> int:
-    return subprocess.run(args, check=False).returncode
+def download(args: list[str], bar: tqdm) -> int:
+    with subprocess.Popen(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
+    ) as process:
+        assert process.stdout is not None
+        for line in process.stdout:
+            if PROGRESS_MARKER not in line:
+                if "ERROR:" in line:
+                    tqdm.write(line.rstrip(), file=sys.stderr)
+                continue
+            match = PROGRESS_PATTERN.search(line.split(PROGRESS_MARKER, 1)[1].strip())
+            if match is None:
+                continue
+            percent = min(100.0, max(0.0, float(match.group(1))))
+            title = match.group(2).strip()
+            if title:
+                bar.set_description_str(title[:45], refresh=False)
+            bar.n = percent
+            bar.refresh()
+        return process.wait()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -213,16 +251,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"Starting {len(commands)} yt-dlp job(s) with {args.processes} process worker(s)."
     )
     failures = 0
-    with concurrent.futures.ProcessPoolExecutor(max_workers=args.processes) as executor:
-        futures = [executor.submit(download, command) for command in commands]
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                failures += future.result() != 0
-            except (
-                Exception  # noqa: BLE001
-            ) as error:  # A worker itself could not be started.
-                failures += 1
-                print(f"Worker failed: {error}", file=sys.stderr)
+    bars = [
+        tqdm(total=100, desc=f"Video {i + 1}", position=i, unit="%", leave=True)
+        for i in range(len(commands))
+    ]
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.processes) as executor:
+            futures = {
+                executor.submit(download, command, bar): bar
+                for command, bar in zip(commands, bars)
+            }
+            for future in concurrent.futures.as_completed(futures):
+                bar = futures[future]
+                try:
+                    returncode = future.result()
+                    if returncode:
+                        failures += 1
+                        bar.set_description_str(f"FAILED: {bar.desc}")
+                    else:
+                        bar.n = 100
+                        bar.refresh()
+                except Exception as error:
+                    failures += 1
+                    tqdm.write(f"Worker failed: {error}", file=sys.stderr)
+    finally:
+        for bar in bars:
+            bar.close()
 
     if failures:
         print(f"{failures} yt-dlp job(s) failed.", file=sys.stderr)
