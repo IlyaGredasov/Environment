@@ -16,11 +16,14 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import os
+import queue
 import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from tqdm import tqdm
@@ -28,7 +31,36 @@ from tqdm import tqdm
 OUTPUT_TEMPLATE = "%(playlist&{}/|)s%(title)s.%(ext)s"
 DEFAULT_PROCESSES = 4
 PROGRESS_MARKER = "__YT_PROGRESS__"
-PROGRESS_PATTERN = re.compile(r"(\d+(?:\.\d+)?)%\|?(.*)")
+PROGRESS_PATTERN = re.compile(
+    r"(?P<downloaded>\d+|NA)\|(?P<total>\d+|NA)\|"
+    r"(?P<estimated_total>\d+|NA)\|(?P<title>.*)"
+)
+ENCODER_PATTERN = re.compile(
+    r"^\s*V\S*\s+(?P<name>\S+)\s+(?P<description>.+)$", re.MULTILINE
+)
+
+
+@dataclass(frozen=True)
+class H264Encoder:
+    name: str
+    description: str
+
+
+HARDWARE_H264_ENCODERS = (
+    H264Encoder("h264_nvenc", "NVIDIA NVENC hardware acceleration"),
+    H264Encoder("h264_amf", "AMD AMF hardware acceleration"),
+    H264Encoder("h264_qsv", "Intel Quick Sync hardware acceleration"),
+    H264Encoder("h264_d3d12va", "Direct3D 12 video acceleration"),
+    H264Encoder("h264_mf", "Windows Media Foundation hardware acceleration"),
+    H264Encoder("h264_videotoolbox", "Apple VideoToolbox hardware acceleration"),
+    H264Encoder("h264_vaapi", "VA-API hardware acceleration"),
+    H264Encoder("h264_v4l2m2m", "V4L2 M2M hardware acceleration"),
+    H264Encoder("h264_vulkan", "Vulkan video acceleration"),
+)
+SOFTWARE_H264_ENCODERS = (
+    H264Encoder("libx264", "libx264 software encoder"),
+    H264Encoder("h264", "FFmpeg H.264 software encoder"),
+)
 
 
 def positive_process_count(value: str) -> int:
@@ -36,6 +68,13 @@ def positive_process_count(value: str) -> int:
     if count < 2:
         raise argparse.ArgumentTypeError("must be at least 2")
     return count
+
+
+def configure_utf8_console() -> None:
+    """Keep titles readable when the script is launched from Windows PowerShell."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -100,22 +139,9 @@ def read_urls(path: Path) -> list[str]:
     return urls
 
 
-def has_nvenc() -> bool:
-    """Return whether the installed ffmpeg can use NVIDIA's H.264 encoder."""
-    ffmpeg = shutil.which("ffmpeg")
-    nvidia_smi = shutil.which("nvidia-smi")
-    if ffmpeg is None or nvidia_smi is None:
-        return False
+def available_h264_encoders(ffmpeg: str) -> set[str]:
+    """Get H.264 video encoder names advertised by the installed FFmpeg."""
     try:
-        gpu = subprocess.run(
-            [nvidia_smi, "-L"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-        )
         result = subprocess.run(
             [ffmpeg, "-hide_banner", "-encoders"],
             stdout=subprocess.PIPE,
@@ -126,13 +152,57 @@ def has_nvenc() -> bool:
             check=False,
         )
     except OSError:
+        return set()
+    if result.returncode:
+        return set()
+    return {
+        match.group("name")
+        for match in ENCODER_PATTERN.finditer(result.stdout)
+        if "h264" in match.group("name")
+        or "h.264" in match.group("description").lower()
+    }
+
+
+def encoder_works(ffmpeg: str, encoder: str) -> bool:
+    """Check that a listed encoder can actually initialize on this computer."""
+    try:
+        result = subprocess.run(
+            [
+                ffmpeg,
+                "-nostdin",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:s=640x360:r=1",
+                "-frames:v",
+                "1",
+                "-an",
+                "-c:v",
+                encoder,
+                "-f",
+                "null",
+                "-",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
         return False
-    return (
-        gpu.returncode == 0
-        and bool(gpu.stdout.strip())
-        and result.returncode == 0
-        and "h264_nvenc" in result.stdout
-    )
+    return result.returncode == 0
+
+
+def select_h264_encoder(ffmpeg: str) -> H264Encoder:
+    """Prefer the fastest functional hardware H.264 encoder, then software."""
+    available = available_h264_encoders(ffmpeg)
+    for encoder in (*HARDWARE_H264_ENCODERS, *SOFTWARE_H264_ENCODERS):
+        if encoder.name in available and encoder_works(ffmpeg, encoder.name):
+            return encoder
+    raise RuntimeError("FFmpeg has no usable H.264 encoder.")
 
 
 def yt_dlp_args(
@@ -150,8 +220,14 @@ def yt_dlp_args(
         OUTPUT_TEMPLATE,
         "--yes-playlist",
         "--newline",
+        "--encoding",
+        "utf-8",
         "--progress-template",
-        f"download:{PROGRESS_MARKER}%(progress._percent_str)s|%(info.title)s",
+        (
+            f"download:{PROGRESS_MARKER}%(progress.downloaded_bytes)s|"
+            "%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|"
+            "%(info.title)s"
+        ),
         "--no-check-certificates",
         "--js-runtime",
         "node",
@@ -171,7 +247,7 @@ def yt_dlp_args(
                 "--recode-video",
                 "mkv",
                 "--postprocessor-args",
-                f"VideoConvertor:-c:v {video_codec} -preset p5 -cq 23 -c:a copy",
+                f"VideoConvertor:-c:v {video_codec} -c:a copy",
             )
         )
     elif mode == "mp3":
@@ -184,6 +260,8 @@ def yt_dlp_args(
 
 
 def download(args: list[str], bar: tqdm) -> int:
+    environment = os.environ.copy()
+    environment["PYTHONIOENCODING"] = "utf-8"
     with subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
@@ -192,6 +270,7 @@ def download(args: list[str], bar: tqdm) -> int:
         encoding="utf-8",
         errors="replace",
         bufsize=1,
+        env=environment,
     ) as process:
         assert process.stdout is not None
         for line in process.stdout:
@@ -202,16 +281,35 @@ def download(args: list[str], bar: tqdm) -> int:
             match = PROGRESS_PATTERN.search(line.split(PROGRESS_MARKER, 1)[1].strip())
             if match is None:
                 continue
-            percent = min(100.0, max(0.0, float(match.group(1))))
-            title = match.group(2).strip()
+            downloaded_value = match.group("downloaded")
+            if downloaded_value == "NA":
+                continue
+            downloaded = int(downloaded_value)
+            total = next(
+                (
+                    int(value)
+                    for value in (
+                        match.group("total"),
+                        match.group("estimated_total"),
+                    )
+                    if value != "NA"
+                ),
+                None,
+            )
+            title = match.group("title").strip()
             if title:
                 bar.set_description_str(title[:45], refresh=False)
-            bar.n = percent
+            if downloaded < bar.n:
+                bar.reset(total=total)
+            elif total is not None:
+                bar.total = total
+            bar.n = downloaded
             bar.refresh()
         return process.wait()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    configure_utf8_console()
     args = parse_args(argv)
     if shutil.which("yt-dlp") is None:
         print("yt-dlp was not found in PATH.", file=sys.stderr)
@@ -240,9 +338,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.mp3
         else None
     )
-    video_codec = "h264_nvenc" if mode == "recode-mkv" and has_nvenc() else "h264"
+    video_codec = ""
     if mode == "recode-mkv":
-        print(f"Re-encoding with {video_codec}.")
+        ffmpeg = shutil.which("ffmpeg")
+        if ffmpeg is None:
+            print("ffmpeg was not found in PATH.", file=sys.stderr)
+            return 2
+        try:
+            encoder = select_h264_encoder(ffmpeg)
+        except RuntimeError as error:
+            print(error, file=sys.stderr)
+            return 2
+        video_codec = encoder.name
+        print(f"Selected H.264 encoder: {encoder.name} ({encoder.description}).")
 
     commands = [
         yt_dlp_args(url, args.output_dir, cookies, mode, video_codec) for url in urls
@@ -251,32 +359,71 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"Starting {len(commands)} yt-dlp job(s) with {args.processes} process worker(s)."
     )
     failures = 0
+    worker_count = min(args.processes, len(commands))
     bars = [
-        tqdm(total=100, desc=f"Video {i + 1}", position=i, unit="%", leave=True)
-        for i in range(len(commands))
+        tqdm(
+            total=None,
+            desc=f"Worker {i + 1}",
+            position=i,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+            bar_format="{desc}: {n_fmt}/{total_fmt} {bar} [{elapsed}<{remaining}, {rate_fmt}]",
+            leave=True,
+        )
+        for i in range(worker_count)
     ]
+    overall_bar = tqdm(
+        total=len(commands),
+        desc="Tasks",
+        position=worker_count,
+        unit="task",
+        bar_format="{desc}: {n_fmt}/{total_fmt} {bar} [{elapsed}<{remaining}]",
+        leave=True,
+    )
+    available_bars: queue.SimpleQueue[tqdm] = queue.SimpleQueue()
+    for bar in bars:
+        available_bars.put(bar)
+
+    def run_download(command: list[str], job_number: int) -> int:
+        bar = available_bars.get()
+        bar.reset(total=None)
+        bar.set_description_str(f"Job {job_number}/{len(commands)}")
+        bar.refresh()
+        try:
+            returncode = download(command, bar)
+            if returncode == 0:
+                bar.refresh()
+            else:
+                bar.set_description_str(f"FAILED: job {job_number}/{len(commands)}")
+            return returncode
+        finally:
+            available_bars.put(bar)
+
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=args.processes) as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=worker_count
+        ) as executor:
             futures = {
-                executor.submit(download, command, bar): bar
-                for command, bar in zip(commands, bars)
+                executor.submit(run_download, command, index): index
+                for index, command in enumerate(commands, start=1)
             }
             for future in concurrent.futures.as_completed(futures):
-                bar = futures[future]
+                job_number = futures[future]
                 try:
                     returncode = future.result()
                     if returncode:
                         failures += 1
-                        bar.set_description_str(f"FAILED: {bar.desc}")
-                    else:
-                        bar.n = 100
-                        bar.refresh()
-                except Exception as error:
+                        tqdm.write(f"Job {job_number} failed.", file=sys.stderr)
+                except Exception as error:  # noqa: BLE001
                     failures += 1
                     tqdm.write(f"Worker failed: {error}", file=sys.stderr)
+                finally:
+                    overall_bar.update(1)
     finally:
         for bar in bars:
             bar.close()
+        overall_bar.close()
 
     if failures:
         print(f"{failures} yt-dlp job(s) failed.", file=sys.stderr)
