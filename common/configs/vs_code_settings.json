@@ -72,5 +72,7 @@
     "jupyter.askForKernelRestart": false,
     "security.allowedUNCHosts": [
         "wsl.localhost"
-    ]
+    ],
+    "files.saveConflictResolution": "overwriteFileOnDisk",
+    "editor.largeFileOptimizations": false
 }

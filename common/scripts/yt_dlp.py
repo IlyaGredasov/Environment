@@ -31,10 +31,13 @@ from tqdm import tqdm
 OUTPUT_TEMPLATE = "%(playlist&{}/|)s%(title)s.%(ext)s"
 DEFAULT_PROCESSES = 4
 PROGRESS_MARKER = "__YT_PROGRESS__"
+OUTPUT_MARKER = "__YT_OUTPUT__"
 PROGRESS_PATTERN = re.compile(
     r"(?P<downloaded>\d+|NA)\|(?P<total>\d+|NA)\|"
-    r"(?P<estimated_total>\d+|NA)\|(?P<title>.*)"
+    r"(?P<estimated_total>\d+|NA)\|(?P<vcodec>[^|]*)\|"
+    r"(?P<acodec>[^|]*)\|(?P<title>.*)"
 )
+FFMPEG_TIME_PATTERN = re.compile(r"^(?P<hours>\d+):(?P<minutes>\d{2}):(?P<seconds>\d{2}(?:\.\d+)?)$")
 ENCODER_PATTERN = re.compile(
     r"^\s*V\S*\s+(?P<name>\S+)\s+(?P<description>.+)$", re.MULTILINE
 )
@@ -102,8 +105,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--processes",
         type=positive_process_count,
-        default=DEFAULT_PROCESSES,
-        help=f"number of yt-dlp processes, at least 2 (default: {DEFAULT_PROCESSES})",
+        default=None,
+        help=(
+            "number of yt-dlp processes, at least 2 "
+            f"(default: min({DEFAULT_PROCESSES}, number of URLs))"
+        ),
     )
 
     mode = parser.add_mutually_exclusive_group()
@@ -220,13 +226,14 @@ def yt_dlp_args(
         OUTPUT_TEMPLATE,
         "--yes-playlist",
         "--newline",
+        "--progress",
         "--encoding",
         "utf-8",
         "--progress-template",
         (
             f"download:{PROGRESS_MARKER}%(progress.downloaded_bytes)s|"
             "%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|"
-            "%(info.title)s"
+            "%(info.vcodec)s|%(info.acodec)s|%(info.title)s"
         ),
         "--no-check-certificates",
         "--js-runtime",
@@ -244,10 +251,10 @@ def yt_dlp_args(
     elif mode == "recode-mkv":
         args.extend(
             (
-                "--recode-video",
+                "--merge-output-format",
                 "mkv",
-                "--postprocessor-args",
-                f"VideoConvertor:-c:v {video_codec} -c:a copy",
+                "--print",
+                f"after_move:{OUTPUT_MARKER}%(filepath)s",
             )
         )
     elif mode == "mp3":
@@ -259,7 +266,71 @@ def yt_dlp_args(
     return args
 
 
-def download(args: list[str], bar: tqdm) -> int:
+def download_stage(vcodec: str, acodec: str) -> str:
+    """Name the current yt-dlp stream using its selected codecs."""
+    if vcodec == "none" and acodec != "none":
+        return "audio"
+    return "video"
+
+
+def seconds_from_ffmpeg_time(value: str) -> float | None:
+    """Convert FFmpeg's HH:MM:SS.microseconds progress value to seconds."""
+    match = FFMPEG_TIME_PATTERN.fullmatch(value)
+    if match is None:
+        return None
+    return (
+        int(match.group("hours")) * 3600
+        + int(match.group("minutes")) * 60
+        + float(match.group("seconds"))
+    )
+
+
+def format_clock(seconds: float | None) -> str:
+    """Format a progress timestamp without tqdm's decimal-second notation."""
+    if seconds is None:
+        return "??:??:??"
+    whole_seconds = max(0, int(seconds))
+    hours, remainder = divmod(whole_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+
+def format_bytes(value: int | None) -> str:
+    """Render byte values in the same compact scale as tqdm's download bar."""
+    return "?" if value is None else tqdm.format_sizeof(value, suffix="B", divisor=1024)
+
+
+def set_stage(bar: tqdm, stage: str, title: str) -> None:
+    """Put the active stage at the left and the media title beside it."""
+    bar.set_description_str(stage, refresh=False)
+    bar.set_postfix_str(title[:70], refresh=False)
+
+
+def update_byte_bar(
+    bar: tqdm,
+    stage: str,
+    downloaded: int,
+    total: int | None,
+    title: str,
+) -> None:
+    bar.unit = "B"
+    bar.unit_scale = True
+    bar.unit_divisor = 1024
+    set_stage(
+        bar,
+        f"Downloading {stage.title()}: {format_bytes(downloaded)}/{format_bytes(total)}",
+        title,
+    )
+    if downloaded < bar.n:
+        bar.reset(total=total)
+    elif total is not None:
+        bar.total = total
+    bar.n = downloaded
+    bar.refresh()
+
+
+def download(args: list[str], bar: tqdm) -> tuple[int, list[Path]]:
+    output_paths: list[Path] = []
     environment = os.environ.copy()
     environment["PYTHONIOENCODING"] = "utf-8"
     with subprocess.Popen(
@@ -274,6 +345,11 @@ def download(args: list[str], bar: tqdm) -> int:
     ) as process:
         assert process.stdout is not None
         for line in process.stdout:
+            if OUTPUT_MARKER in line:
+                output_path = line.split(OUTPUT_MARKER, 1)[1].strip()
+                if output_path:
+                    output_paths.append(Path(output_path))
+                continue
             if PROGRESS_MARKER not in line:
                 if "ERROR:" in line:
                     tqdm.write(line.rstrip(), file=sys.stderr)
@@ -297,15 +373,111 @@ def download(args: list[str], bar: tqdm) -> int:
                 None,
             )
             title = match.group("title").strip()
-            if title:
-                bar.set_description_str(title[:45], refresh=False)
-            if downloaded < bar.n:
-                bar.reset(total=total)
-            elif total is not None:
-                bar.total = total
-            bar.n = downloaded
+            stage = download_stage(match.group("vcodec"), match.group("acodec"))
+            update_byte_bar(bar, stage, downloaded, total, title)
+        return process.wait(), output_paths
+
+
+def media_duration(path: Path) -> float | None:
+    """Read a media duration for FFmpeg's time-based progress bar."""
+    ffprobe = shutil.which("ffprobe")
+    if ffprobe is None:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(path),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        return float(result.stdout.strip()) if result.returncode == 0 else None
+    except (OSError, ValueError):
+        return None
+
+
+def recode_mkv(path: Path, ffmpeg: str, video_codec: str, bar: tqdm) -> None:
+    """Re-encode one completed download and stream FFmpeg progress into tqdm."""
+    duration = media_duration(path)
+    temporary_path = path.with_name(f"{path.stem}.recode-tmp.mkv")
+    output_path = path.with_suffix(".mkv")
+    if temporary_path.exists():
+        temporary_path.unlink()
+    bar.unit = "s"
+    bar.unit_scale = False
+    bar.reset(total=duration)
+    set_stage(bar, f"FFmpeg: {format_clock(0)}/{format_clock(duration)}", path.name)
+    try:
+        with subprocess.Popen(
+            [
+                ffmpeg,
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                str(path),
+                "-c:v",
+                video_codec,
+                "-c:a",
+                "copy",
+                "-progress",
+                "pipe:1",
+                "-nostats",
+                str(temporary_path),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+        ) as process:
+            assert process.stdout is not None
+            for line in process.stdout:
+                key, separator, value = line.strip().partition("=")
+                if separator and key in {"out_time", "out_time_us", "out_time_ms"}:
+                    if key == "out_time":
+                        current = seconds_from_ffmpeg_time(value)
+                    else:
+                        current = int(value) / 1_000_000 if value.isdigit() else None
+                    if current is not None:
+                        bar.n = min(current, duration) if duration is not None else current
+                        set_stage(
+                            bar,
+                            f"FFmpeg: {format_clock(current)}/{format_clock(duration)}",
+                            path.name,
+                        )
+                        bar.refresh()
+                elif line.startswith("ERROR:"):
+                    tqdm.write(line.rstrip(), file=sys.stderr)
+            if process.wait() != 0:
+                raise RuntimeError(f"FFmpeg failed while processing: {path}")
+        os.replace(temporary_path, output_path)
+        if path != output_path:
+            path.unlink()
+        if duration is not None:
+            bar.n = duration
+            set_stage(
+                bar,
+                f"FFmpeg: {format_clock(duration)}/{format_clock(duration)}",
+                path.name,
+            )
             bar.refresh()
-        return process.wait()
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -339,6 +511,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else None
     )
     video_codec = ""
+    ffmpeg = ""
     if mode == "recode-mkv":
         ffmpeg = shutil.which("ffmpeg")
         if ffmpeg is None:
@@ -355,21 +528,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = [
         yt_dlp_args(url, args.output_dir, cookies, mode, video_codec) for url in urls
     ]
-    print(
-        f"Starting {len(commands)} yt-dlp job(s) with {args.processes} process worker(s)."
-    )
     failures = 0
-    worker_count = min(args.processes, len(commands))
+    worker_count = min(args.processes or DEFAULT_PROCESSES, len(commands))
+    print(
+        f"Starting {len(commands)} yt-dlp job(s) with {worker_count} process worker(s)."
+    )
     bars = [
         tqdm(
             total=None,
-            desc=f"Worker {i + 1}",
+            desc="Preparing",
             position=i,
             unit="B",
             unit_scale=True,
             unit_divisor=1024,
-            bar_format="{desc}: {n_fmt}/{total_fmt} {bar} [{elapsed}<{remaining}, {rate_fmt}]",
-            leave=True,
+            bar_format="[{desc}] {postfix} {bar} [{elapsed}<{remaining}, {rate_fmt}]",
+            leave=False,
         )
         for i in range(worker_count)
     ]
@@ -378,7 +551,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         desc="Tasks",
         position=worker_count,
         unit="task",
-        bar_format="{desc}: {n_fmt}/{total_fmt} {bar} [{elapsed}<{remaining}]",
+        bar_format="[{n_fmt}/{total_fmt} {desc}]",
         leave=True,
     )
     available_bars: queue.SimpleQueue[tqdm] = queue.SimpleQueue()
@@ -388,14 +561,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     def run_download(command: list[str], job_number: int) -> int:
         bar = available_bars.get()
         bar.reset(total=None)
-        bar.set_description_str(f"Job {job_number}/{len(commands)}")
+        set_stage(bar, "Preparing", f"job {job_number}/{len(commands)}")
         bar.refresh()
         try:
-            returncode = download(command, bar)
+            returncode, output_paths = download(command, bar)
             if returncode == 0:
+                if mode == "recode-mkv":
+                    for output_path in output_paths:
+                        recode_mkv(output_path, ffmpeg, video_codec, bar)
                 bar.refresh()
             else:
-                bar.set_description_str(f"FAILED: job {job_number}/{len(commands)}")
+                set_stage(bar, f"FAILED: job {job_number}/{len(commands)}", "")
             return returncode
         finally:
             available_bars.put(bar)
