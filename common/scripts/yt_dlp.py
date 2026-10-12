@@ -37,7 +37,9 @@ PROGRESS_PATTERN = re.compile(
     r"(?P<estimated_total>\d+|NA)\|(?P<vcodec>[^|]*)\|"
     r"(?P<acodec>[^|]*)\|(?P<title>.*)"
 )
-FFMPEG_TIME_PATTERN = re.compile(r"^(?P<hours>\d+):(?P<minutes>\d{2}):(?P<seconds>\d{2}(?:\.\d+)?)$")
+FFMPEG_TIME_PATTERN = re.compile(
+    r"^(?P<hours>\d+):(?P<minutes>\d{2}):(?P<seconds>\d{2}(?:\.\d+)?)$"
+)
 ENCODER_PATTERN = re.compile(
     r"^\s*V\S*\s+(?P<name>\S+)\s+(?P<description>.+)$", re.MULTILINE
 )
@@ -453,7 +455,9 @@ def recode_mkv(path: Path, ffmpeg: str, video_codec: str, bar: tqdm) -> None:
                     else:
                         current = int(value) / 1_000_000 if value.isdigit() else None
                     if current is not None:
-                        bar.n = min(current, duration) if duration is not None else current
+                        bar.n = (
+                            min(current, duration) if duration is not None else current
+                        )
                         set_stage(
                             bar,
                             f"FFmpeg: {format_clock(current)}/{format_clock(duration)}",
