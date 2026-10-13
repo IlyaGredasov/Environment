@@ -3,13 +3,8 @@ autoload -Uz compinit && compinit
 
 ZSH_COLOR_THEME="${ZSH_COLOR_THEME:-orange}"
 
-if [[ "$ZSH_COLOR_THEME" == "violet" ]]; then
-	eval "$(dircolors -b ~/.violet_dircolors)"
-	source ~/Programming/Environment/linux/scripts/violet.zsh
-else
-	eval "$(dircolors -b ~/.orange_dircolors)"
-	source ~/Programming/Environment/linux/scripts/orange.zsh
-fi
+eval "$(dircolors -b ~/.orange_dircolors)"
+source ~/Programming/Environment/linux/scripts/orange.zsh
 
 if [ -e "/usr/share/zsh/plugins/" ]; then
 	source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
