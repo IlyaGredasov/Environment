@@ -7,4 +7,4 @@ ln -s ~/Programming/Environment/linux/configs/vs_code_settings.json ~/.config/Co
 ln -s ~/Programming/Environment/linux/configs/.orange_dircolors ~/.orange_dircolors
 ln -s ~/Programming/Environment/linux/configs/.zshrc ~/.zshrc
 sudo ln -s ~/Programming/Environment/linux/configs/orange.profile /usr/share/konsole/orange.profile
-sudo ln -s ~/Programming/Environment/linux/configs/apt_orange_progress_bar /etc/apt/apt.conf.d/99progressbar
+sudo ln -s ~/Programming/Environment/linux/configs/apt_orange_progress_bar /etc/apt/apt.conf.d/99custom-colors

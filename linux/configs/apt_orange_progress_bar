@@ -1,3 +1,4 @@
 Dpkg::Progress-Fancy "1";
 Dpkg::Progress-Fancy::Progress-Bg "%1b[48;5;208m";
 Dpkg::Progress-Fancy::Progress-Fg "%1b[30m";
+APT::Color::Green "\x1B[38;2;255;128;0m";
