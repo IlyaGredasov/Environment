@@ -5,7 +5,6 @@ ln -s ~/Programming/Environment/common/configs/micro_settings.json ~/.config/mic
 ln -s ~/Programming/Environment/linux/configs/micro_bindings.json ~/.config/micro/bindings.json
 ln -s ~/Programming/Environment/linux/configs/vs_code_settings.json ~/.config/Code/$(whoami)/settings.json
 ln -s ~/Programming/Environment/linux/configs/.orange_dircolors ~/.orange_dircolors
-ln -s ~/Programming/Environment/linux/configs/.violet_dircolors ~/.violet_dircolors
 ln -s ~/Programming/Environment/linux/configs/.zshrc ~/.zshrc
 sudo ln -s ~/Programming/Environment/linux/configs/orange.profile /usr/share/konsole/orange.profile
-sudo ln -s ~/Programming/Environment/linux/configs/violet.profile /usr/share/konsole/violet.profile
+sudo ln -s ~/Programming/Environment/linux/configs/apt_orange_progress_bar /etc/apt/apt.conf.d/99progressbar
