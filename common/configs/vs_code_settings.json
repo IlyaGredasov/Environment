@@ -59,7 +59,6 @@
     },
     "python.analysis.diagnosticMode": "workspace",
     "git.suggestSmartCommit": false,
-    "window.zoomLevel": -1.5,
     "yaml.schemaStore.enable": false,
     "explorer.confirmDragAndDrop": false,
     "terminal.integrated.suggest.enabled": false,
@@ -74,5 +73,19 @@
         "wsl.localhost"
     ],
     "files.saveConflictResolution": "overwriteFileOnDisk",
-    "editor.largeFileOptimizations": false
+    "editor.largeFileOptimizations": false,
+    "json.schemaDownload.trustedDomains": {
+        "https://developer.microsoft.com/json-schemas/": true,
+        "https://json-schema.org/": true,
+        "https://json.schemastore.org/": true,
+        "https://models.dev": true,
+        "https://opencode.ai": true,
+        "https://raw.githubusercontent.com/devcontainers/spec/": true,
+        "https://raw.githubusercontent.com/microsoft/vscode/": true,
+        "https://schemastore.azurewebsites.net/": true,
+        "https://spec.openapis.org/": true,
+        "https://www.schemastore.org/": true
+    },
+    "window.zoomLevel": -1.5,
+    "editor.fontFamily": "Hack"
 }
